@@ -1,0 +1,131 @@
+---
+title: "p8105_hw6_lmp2234"
+author: "Lisa Pardee"
+date: "2024-11-30"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(modelr)
+library(mgcv)
+library(SemiPar)
+library(p8105.datasets)
+library(purrr)
+set.seed(1)
+```
+
+
+# Problem 1
+
+```{r}
+weather_df = 
+  rnoaa::meteo_pull_monitors(
+    c("USW00094728"),
+    var = c("PRCP", "TMIN", "TMAX"), 
+    date_min = "2017-01-01",
+    date_max = "2017-12-31") %>%
+  mutate(
+    name = recode(id, USW00094728 = "CentralPark_NY"),
+    tmin = tmin / 10,
+    tmax = tmax / 10) %>%
+  select(name, id, everything())
+```
+
+Bootstrapping 
+```{r}
+weather_boot_results =
+ weather_df %>% 
+  bootstrap(5000, id = "strap_number") %>% 
+  mutate(
+    models = map(.x = strap, ~lm(tmax ~ tmin, data = .x)),
+    results = map(models, broom::tidy)
+  ) %>%
+  select(strap_number, results) %>%
+  unnest(results) 
+  
+  weather_boot_results %>% 
+  group_by(term) %>% 
+  summarize(
+    mean_est = mean(estimate), 
+    sd_est = sd(estimate)
+  )
+
+```
+
+Extracting R^2 from the bootstrap model 
+
+
+```{r}
+weather_boot_results = 
+  weather_df %>% 
+  bootstrap(5000, id = "strap_number") %>% 
+  mutate(
+    models = map(.x = strap, ~lm(tmax ~ tmin, data = .x)),
+    r2 = map_dbl(models, ~broom::glance(.x)$r.squared)
+  )
+  
+
+```
+
+Calculating log(Bo x B1)
+
+```{r}
+weather_boot_results = weather_boot_results %>% 
+  mutate(
+    coefs = map(models, broom::tidy),
+    log_beta_product = map_dbl(coefs, ~{
+      coefs = .x
+      beta0 = coefs$estimate[coefs$term == "(Intercept)"]
+      beta1 = coefs$estimate[coefs$term == "tmin"]
+      log(beta0 * beta1)
+    })
+  )
+```
+
+Mapping the distribution of each estimate 
+
+```{r}
+library(ggplot2)
+
+ggplot(weather_boot_results, aes(x = r2))+
+  geom_density()+
+  labs(title = "Bootstrap Distribution of R^2", x = "R2", y = "Frequency")
+  
+ggplot(weather_boot_results, aes (x = log_beta_product))+
+  geom_density() +
+  labs(title = "Boostrap Distribution of Log Beta Products", x = "Log Beta", y = "Frequency") 
+
+```
+
+Calculating Confidence Intervals for Both 
+```{r}
+r2_ci = weather_boot_results %>%
+  summarize(
+    ci_lower = quantile(r2, 0.025),
+    ci_upper = quantile(r2, 0.975)
+  ) %>%
+  mutate(term = "R^2")
+
+r2_ci
+
+coef_ci = weather_boot_results %>% 
+  unnest(coefs) %>% 
+  group_by(term) %>% 
+  summarize(
+    ci_lower = quantile(estimate, 0.025),
+    ci_upper = quantile(estimate, 0.975)
+  )
+
+coef_ci 
+  
+boot_confidence_intervals = bind_rows(coef_ci, r2_ci)
+
+boot_confidence_intervals
+```
+
+# Problem 2 
