@@ -5,8 +5,10 @@ date: "2024-11-30"
 output: github_document
 ---
 
-```{r setup, include=FALSE}
+```{r}
 knitr::opts_chunk$set(echo = TRUE)
+
+
 ```
 
 ```{r}
@@ -129,3 +131,71 @@ boot_confidence_intervals
 ```
 
 # Problem 2 
+
+```{r, message = FALSE, warning = FALSE}
+library(readr)
+
+homocide_df = 
+  read_csv("homicide_data.csv") %>% 
+  mutate(
+    city_state = paste(city, state, sep = ","), 
+    solved = if_else(disposition == "Closed by arrest", 1, 0), 
+    victim_age = as.numeric(victim_age)) %>% 
+  filter(
+    !city_state %in% c("Dallas,TX", "Phoenix,AZ", "Kansas City,MO", "Tulsa,AL"),
+    victim_race %in% c("White", "Black"), 
+    !is.na(victim_age)
+  )
+```
+
+```{r}
+baltimore_fit = glm(solved ~ victim_age + victim_sex + victim_race, data = homocide_df, family = binomial())
+
+coef(baltimore_fit)
+
+baltimore_tidy = 
+baltimore_fit |> 
+  broom::tidy(conf.int = TRUE)  |> 
+  select(term, estimate, conf.low, conf.high, p.value)
+
+baltimore_tidy
+
+male_female_odds = 
+  baltimore_tidy %>% 
+  filter(term=="victim_sexMale")
+
+male_female_odds
+
+```
+Running glms for each city 
+
+```{r}
+library(purrr)
+
+city_regressions = 
+  homocide_df %>% 
+  group_by(city_state) %>% 
+  nest() %>% 
+  mutate(
+    glm_fit = map(data, ~glm(solved ~ victim_age + victim_sex + victim_race, data = .x, family = binomial())),
+    tidy_results = map(glm_fit, ~broom::tidy(.x, conf.int = TRUE, exponentiate = TRUE))
+  ) %>% 
+  unnest(tidy_results) %>% 
+  filter(term == "victim_sexMale") %>%
+  select(city_state, estimate, conf.low, conf.high, p.value)
+
+city_regressions
+```
+```{r}
+city_regressions %>% 
+  arrange(estimate) %>% 
+  mutate(
+    city_state = factor(city_state, levels = city_state)) %>% 
+  ggplot(aes(x = city_state, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  labs( title = "Esimated ORs and CIs for Solving Homocides by City", x = "City", y = "Male to Female Victims Odds Ratio") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+```
+This plot displays that cities such as Albuquerque, Freston, and Stockton have higher odds ratios of male to female victims for solving homicides. 
