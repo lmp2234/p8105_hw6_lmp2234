@@ -297,3 +297,4 @@ cv_df %>%
   labs(title = "RMSE Distribution for Each Model", x = "Model", y = "RMSE")
 ```
 Compared to the other models, my model has the worst prediction accuracy while model 3 has the most accurate prediction accuracy since the RMSE is lower. 
+
