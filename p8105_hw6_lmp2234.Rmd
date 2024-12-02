@@ -7,11 +7,6 @@ output: github_document
 
 ```{r}
 knitr::opts_chunk$set(echo = TRUE)
-
-
-```
-
-```{r}
 library(tidyverse)
 library(modelr)
 library(mgcv)
@@ -60,8 +55,6 @@ weather_boot_results =
 ```
 
 Extracting R^2 from the bootstrap model 
-
-
 ```{r}
 weather_boot_results = 
   weather_df %>% 
@@ -96,15 +89,18 @@ library(ggplot2)
 
 ggplot(weather_boot_results, aes(x = r2))+
   geom_density()+
-  labs(title = "Bootstrap Distribution of R^2", x = "R2", y = "Frequency")
+  labs(title = "Bootstrap Distribution of R^2", x = "R2", y = "Density")
   
 ggplot(weather_boot_results, aes (x = log_beta_product))+
   geom_density() +
-  labs(title = "Boostrap Distribution of Log Beta Products", x = "Log Beta", y = "Frequency") 
+  labs(title = "Boostrap Distribution of Log Beta Products", x = "Log Beta", y = "Density") 
 
 ```
+The bootstrap distribution of R2 looks approximately normal with no apparent shoulder or outliers. The bootstrap 
+distribution of log(Bo x B1) appears to hae a heavier tail extending to the right and a bit of the shoulder which indicates the presence of outliers. 
 
-Calculating Confidence Intervals for Both 
+
+Calculating Confidence Intervals for R2 and log(𝛽̂ 0∗𝛽̂1 ) 
 ```{r}
 r2_ci = weather_boot_results %>%
   summarize(
