@@ -174,23 +174,25 @@ library(purrr)
 
 city_regressions = 
   homocide_df %>% 
-  group_by(city_state) %>% 
-  nest() %>% 
+  nest(data = -city_state) %>% 
   mutate(
     glm_fit = map(data, ~glm(solved ~ victim_age + victim_sex + victim_race, data = .x, family = binomial())),
     tidy_results = map(glm_fit, ~broom::tidy(.x, conf.int = TRUE, exponentiate = TRUE))
   ) %>% 
   unnest(tidy_results) %>% 
   filter(term == "victim_sexMale") %>%
-  select(city_state, estimate, conf.low, conf.high, p.value)
-
+  select(city_state, estimate, conf.low, conf.high, p.value) %>% 
+    arrange(desc(estimate)) 
+  
 city_regressions
 ```
+
+
+
 ```{r}
+
 city_regressions %>% 
-  arrange(estimate) %>% 
-  mutate(
-    city_state = factor(city_state, levels = city_state)) %>% 
+  mutate(city_state = factor(city_state, levels = city_state))%>%
   ggplot(aes(x = city_state, y = estimate)) +
   geom_point() +
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
