@@ -5,7 +5,7 @@ date: "2024-11-30"
 output: github_document
 ---
 
-```{r}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(modelr)
@@ -19,7 +19,7 @@ set.seed(1)
 
 # Problem 1
 
-```{r}
+```{r weather_data, message = FALSE, warning = FALSE}
 weather_df = 
   rnoaa::meteo_pull_monitors(
     c("USW00094728"),
@@ -51,7 +51,6 @@ weather_boot_results =
     mean_est = mean(estimate), 
     sd_est = sd(estimate)
   )
-
 ```
 
 Extracting R^2 from the bootstrap model 
@@ -63,8 +62,8 @@ weather_boot_results =
     models = map(.x = strap, ~lm(tmax ~ tmin, data = .x)),
     r2 = map_dbl(models, ~broom::glance(.x)$r.squared)
   )
-  
 
+head(weather_boot_results)
 ```
 
 Calculating log(Bo x B1)
@@ -80,6 +79,8 @@ weather_boot_results = weather_boot_results %>%
       log(beta0 * beta1)
     })
   )
+
+head(weather_boot_results)
 ```
 
 Mapping the distribution of each estimate 
@@ -143,24 +144,22 @@ homocide_df =
     !is.na(victim_age)
   )
 ```
-
+Fitting the model for the city of Baltimore, MD
 ```{r}
 baltimore_fit = glm(solved ~ victim_age + victim_sex + victim_race, data = homocide_df, family = binomial())
 
-coef(baltimore_fit)
-
 baltimore_tidy = 
 baltimore_fit |> 
-  broom::tidy(conf.int = TRUE)  |> 
-  select(term, estimate, conf.low, conf.high, p.value)
+  broom::tidy(conf.int = TRUE) %>% 
+  mutate(
+    estimate = exp(estimate), 
+    conf.low = exp(conf.low), 
+    conf.high = exp(conf.high)) %>% 
+  filter(term=="victim_sexMale") %>% 
+  select(term, estimate, conf.low, conf.high, p.value)  
+  
 
 baltimore_tidy
-
-male_female_odds = 
-  baltimore_tidy %>% 
-  filter(term=="victim_sexMale")
-
-male_female_odds
 
 ```
 Running glms for each city 
@@ -186,7 +185,6 @@ city_regressions
 
 
 ```{r}
-
 city_regressions %>% 
   mutate(city_state = factor(city_state, levels = city_state))%>%
   ggplot(aes(x = city_state, y = estimate)) +
@@ -194,9 +192,8 @@ city_regressions %>%
   geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
   labs( title = "Esimated ORs and CIs for Solving Homocides by City", x = "City", y = "Male to Female Victims Odds Ratio") +
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
-  
 ```
-This plot displays that cities such as Albuquerque, Freston, and Stockton have higher odds ratios of male to female victims for solving homicides.
+This plot displays that cities such as Albuquerque NM, Stockton CA, and Frescno have higher adjusted odds ratios for solving homocides comparing male to female victims. They also have the widest confidence intervals as well. The cities with lower adjusted ORs include Omaha NE, Baton Rouge LA, and New York NY which also hae more narrow confidence intervals. 
 
 #Problem 3 
 
