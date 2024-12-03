@@ -133,7 +133,7 @@ boot_confidence_intervals
 library(readr)
 
 homocide_df = 
-  read_csv("data/homicide_data.csv") %>% 
+  read_csv("./data/homicide_data.csv") %>% 
   mutate(
     city_state = paste(city, state, sep = ","), 
     solved = if_else(disposition == "Closed by arrest", 1, 0), 
@@ -202,7 +202,7 @@ Cleaned the data and converted numeric to factor for variables that were categor
 ```{r}
 
 birthweight_df = 
-  read_csv("data/birthweight.csv") %>% 
+  read_csv("./data/birthweight.csv") %>% 
   mutate(
     babysex = as.factor(babysex) ,
     frace = as.factor(frace) ,
