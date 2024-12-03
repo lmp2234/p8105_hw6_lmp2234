@@ -197,7 +197,10 @@ This plot displays that cities such as Albuquerque NM, Stockton CA, and Frescno 
 
 #Problem 3 
 
+Cleaned the data and converted numeric to factor for variables that were categorical. Checked for missing data with the appropriate functions but did not find missing data for any of the variables.
+
 ```{r}
+
 birthweight_df = 
   read_csv("birthweight.csv") %>% 
   mutate(
@@ -208,16 +211,32 @@ birthweight_df =
       drop_na()
 ```
 
-Looking at the data 
-Fitting a model that includes factors such as mother's weigth at delivery (pounds),  
+Proposing the regression model for birthweight
+
+Fitting a model that includes factors such as mother's weight at delivery (pounds), gestational age in weeks, mother's pre-pregnancy BMI, and mother's pre-pregnancy weight.These are all plausible biological predictors of birth weight and it would be important to assess the interactions between all 4 of these variables to understand how weight factors of the mother influence an infant's birth weight. I hypothesized that maternal weight gain changes based on the gestational age. 
 
 ```{r}
 birthweight_model <-
-  lm(bwt ~ delwt + gaweeks + ppbmi + ppwt + delwt*gaweeks , data = birthweight_df)
+  lm(bwt ~ delwt * gaweeks + delwt * ppbmi + delwt * ppwt + gaweeks * ppbmi + gaweeks * ppwt + ppbmi * ppwt, data = birthweight_df)
 
 summary(birthweight_model)
 
 ```
+After fitting the model of the main effects and interactions, it is apparent that the interactions between delwt:ppt, ppbmi:ppwt, and delwt:ppbmi are not statistically significant. However, using backwards select, the interaction between delwt and ppwt is the first to be eliminated as it has the largest p-value. 
+Refitting the model after removing the interaction term 
+```{r}
+birthweight_model <-
+  lm(bwt ~ delwt * gaweeks + delwt * ppbmi + gaweeks * ppbmi + gaweeks * ppwt + ppbmi * ppwt, data = birthweight_df)
+summary(birthweight_model)
+```
+Removing the interaction between ppbmi and ppwt. Now, all p-values for each term in the model is significant. 
+
+```{r}
+birthweight_model <-
+  lm(bwt ~ delwt * gaweeks + delwt * ppbmi + gaweeks * ppbmi + gaweeks * ppwt, data = birthweight_df)
+summary(birthweight_model)
+```
+
 Residuals and Predictions
 ```{r}
 birthweight_df <- birthweight_df %>% 
@@ -239,7 +258,7 @@ Fitting the regression for a model of length at birth and gestational age as pre
 birthweight_df |> 
   lm(bwt ~ blength + gaweeks, data = _) |> 
   broom::tidy()  |> 
-  knitr::kable()
+  knitr::kable(digits = 4)
 ```
 
 Fitting a regression model for head circumference, length, sex, and interactions 
