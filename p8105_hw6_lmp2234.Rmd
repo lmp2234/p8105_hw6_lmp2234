@@ -164,7 +164,7 @@ baltimore_tidy
 ```
 Running glms for each city 
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 library(purrr)
 
 city_regressions = 
